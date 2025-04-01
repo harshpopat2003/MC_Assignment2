@@ -1,3 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MC_Assignment2</string>
+    <string name="app_name">Flight Tracker</string>
+    <string name="app_title">Flight Tracker &amp; Analytics</string>
+    <string name="flight_number_hint">Enter Flight Number (e.g., AA1234)</string>
+    <string name="track_flight">Track Flight</string>
+    <string name="flight_statistics_title">Flight Statistics</string>
+    <string name="departure">Departure</string>
+    <string name="arrival">Arrival</string>
+    <string name="flight_duration">Flight Duration:</string>
+    <string name="delay">Delay:</string>
+    <string name="updating_live">Updating live...</string>
+    <string name="error_invalid_flight_number">Please enter a valid flight number</string>
+    <string name="error_network">Network error. Please check your connection.</string>
+    <string name="error_flight_not_found">Flight not found</string>
 </resources>
