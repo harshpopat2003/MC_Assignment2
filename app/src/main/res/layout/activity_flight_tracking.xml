@@ -187,6 +187,21 @@
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <TextView
+        android:id="@+id/mapErrorText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:textColor="#D32F2F"
+        android:background="#33FFFFFF"
+        android:padding="8dp"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/mapFragment"
+        app:layout_constraintStart_toStartOf="@id/mapFragment"
+        app:layout_constraintEnd_toEndOf="@id/mapFragment"
+        tools:text="Map error: coordinates not available"
+        tools:visibility="visible" />
+
+    <TextView
         android:id="@+id/lastUpdatedText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
