@@ -6,7 +6,7 @@ import retrofit2.http.Query
 
 interface FlightApiService {
     companion object {
-        const val BASE_URL = "http://api.aviationstack.com/v1/"
+        const val BASE_URL = "https://api.aviationstack.com/v1/"
         const val API_KEY = "c482c9fdfced5b0d9132f24e741f303c" // In a real app, use BuildConfig or secure storage
     }
 
@@ -60,7 +60,16 @@ data class AirportInfo(
     val estimated: String,
     val actual: String?,
     val estimated_runway: String?,
-    val actual_runway: String?
+    val actual_runway: String?,
+    val airport_info: AirportLocationInfo?
+)
+
+data class AirportLocationInfo(
+    val latitude: Double,
+    val longitude: Double,
+    val name: String?,
+    val country: String?,
+    val city: String?
 )
 
 data class Airline(
