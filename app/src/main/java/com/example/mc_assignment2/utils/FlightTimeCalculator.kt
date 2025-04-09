@@ -4,12 +4,16 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 /**
- * Utility class for flight time calculations
+ * Utility object providing helper functions for calculating and formatting flight times and delays.
  */
 object FlightTimeCalculator {
 
     /**
-     * Calculate the duration between two time points in minutes
+     * Calculates the duration between two Date objects in minutes.
+     *
+     * @param startTime The start time of the flight.
+     * @param endTime The end time of the flight.
+     * @return Duration in minutes.
      */
     fun calculateDurationInMinutes(startTime: Date, endTime: Date): Int {
         val durationMillis = endTime.time - startTime.time
@@ -17,20 +21,29 @@ object FlightTimeCalculator {
     }
 
     /**
-     * Format duration in minutes to a human-readable string (e.g., "5h 30m")
+     * Formats a given duration in minutes into a human-readable string.
+     * Example: 90 minutes → "1h 30m"
+     *
+     * @param minutes Total duration in minutes.
+     * @return A formatted string representing hours and minutes.
      */
     fun formatDuration(minutes: Int): String {
         val hours = minutes / 60
         val remainingMinutes = minutes % 60
 
-        return when {
-            hours > 0 -> "${hours}h ${remainingMinutes}m"
-            else -> "${remainingMinutes}m"
+        return if (hours > 0) {
+            "${hours}h ${remainingMinutes}m"
+        } else {
+            "${remainingMinutes}m"
         }
     }
 
     /**
-     * Format delay information for display
+     * Converts delay time into a readable status string.
+     * Example: 0 → "On time", 25 → "+25m"
+     *
+     * @param delay Delay in minutes (nullable).
+     * @return A status string based on the delay.
      */
     fun formatDelay(delay: Int?): String {
         return when {
@@ -41,8 +54,13 @@ object FlightTimeCalculator {
     }
 
     /**
-     * Calculate the actual flight time with delays
-     * This accounts for both departure and arrival delays
+     * Computes an adjusted flight duration accounting for delays.
+     * Adds the net delay difference between arrival and departure to the scheduled duration.
+     *
+     * @param scheduledDuration Scheduled flight duration in minutes.
+     * @param departureDelay Delay at departure in minutes (nullable).
+     * @param arrivalDelay Delay at arrival in minutes (nullable).
+     * @return Adjusted duration in minutes.
      */
     fun getAverageFlightTimeWithDelays(
         scheduledDuration: Int,
@@ -52,7 +70,6 @@ object FlightTimeCalculator {
         val actualDepartureDelay = departureDelay ?: 0
         val actualArrivalDelay = arrivalDelay ?: 0
 
-        // If arrival delay is greater than departure delay, the flight took longer
         return scheduledDuration + (actualArrivalDelay - actualDepartureDelay)
     }
 }

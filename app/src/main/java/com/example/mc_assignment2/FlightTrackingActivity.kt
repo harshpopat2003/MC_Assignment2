@@ -34,6 +34,16 @@ import com.example.mc_assignment2.database.FlightEntity
 
 private const val TAG = "FlightTrackingActivity"
 
+/**
+ * This activity displays real-time flight tracking information including:
+ * - Flight status and details
+ * - Departure and arrival times
+ * - Flight duration and delay information
+ * - Map visualization of the flight route
+ *
+ * The activity fetches flight data from an API and updates it every minute.
+ * It also stores flight information in a local database for offline access.
+ */
 class FlightTrackingActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFlightTrackingBinding
@@ -45,6 +55,8 @@ class FlightTrackingActivity : AppCompatActivity() {
 
     // Handler for minute-by-minute updates
     private val handler = Handler(Looper.getMainLooper())
+
+    // Runnable that will be executed periodically to refresh flight data
     private val updateRunnable = object : Runnable {
         override fun run() {
             refreshFlightData()
@@ -59,13 +71,13 @@ class FlightTrackingActivity : AppCompatActivity() {
         binding = ActivityFlightTrackingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Get flight number from intent
+        // Get flight number from intent - finish activity if not provided
         flightNumber = intent.getStringExtra("FLIGHT_NUMBER") ?: run {
             finish()
             return
         }
 
-        // Set up API service with timeout configuration
+        // Set up API service with timeout configuration to handle slow network connections
         val okHttpClient = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -79,7 +91,7 @@ class FlightTrackingActivity : AppCompatActivity() {
             .build()
             .create(FlightApiService::class.java)
 
-        // Set up map
+        // Set up Google Maps fragment for flight route visualization
         val mapFragment = supportFragmentManager.findFragmentById(R.id.mapFragment) as? SupportMapFragment
         if (mapFragment == null) {
             Log.e(TAG, "Map fragment not found in layout")
@@ -95,28 +107,40 @@ class FlightTrackingActivity : AppCompatActivity() {
             }
         }
 
-        // Display flight number
+        // Display flight number in the UI
         binding.flightNumberText.text = flightNumber
 
-        // Show loading indicator
+        // Show loading indicator while fetching data
         showLoading(true)
 
-        // Initial data load
+        // Initial data load after checking for internet permission
         checkInternetPermissionAndRefresh()
     }
 
+    /**
+     * When activity becomes visible, start periodic updates
+     * to keep flight information current
+     */
     override fun onResume() {
         super.onResume()
-        // Start periodic updates
+        // Start periodic updates every minute
         handler.post(updateRunnable)
     }
 
+    /**
+     * When activity is no longer visible, stop periodic updates
+     * to conserve system resources
+     */
     override fun onPause() {
         super.onPause()
         // Stop periodic updates
         handler.removeCallbacks(updateRunnable)
     }
 
+    /**
+     * Checks if internet permission is granted and requests it if needed.
+     * Once permission is confirmed, initiates the data refresh.
+     */
     private fun checkInternetPermissionAndRefresh() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET)
             != PackageManager.PERMISSION_GRANTED) {
@@ -131,6 +155,11 @@ class FlightTrackingActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Handles the result of permission requests.
+     * If internet permission is granted, proceeds with data refresh,
+     * otherwise informs the user that the permission is required.
+     */
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -145,6 +174,11 @@ class FlightTrackingActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Fetches the latest flight data from the API.
+     * This is the core function that retrieves flight information and updates the UI.
+     * It's called initially and then every minute when the activity is visible.
+     */
     private fun refreshFlightData() {
         showLoading(true)
         lifecycleScope.launch {
@@ -159,9 +193,11 @@ class FlightTrackingActivity : AppCompatActivity() {
                     if (flightData != null) {
                         Log.d(TAG, "Flight data received: ${flightData.flight.iata}")
                         currentFlightData = flightData
+
+                        // Update UI with the new flight data
                         updateUI(flightData)
-                       
-                        // NEW: store flight details into database
+
+                        // Store flight details in the local database for offline access
                         storeFlightData(flightData)
 
                         // Only update map if it's ready
@@ -171,6 +207,7 @@ class FlightTrackingActivity : AppCompatActivity() {
                             Log.d(TAG, "Map not ready yet, will update when ready")
                         }
                     } else {
+                        // Handle case when no flight data is found
                         Log.e(TAG, "Flight data not found")
                         binding.flightStatusText.text = getString(R.string.error_flight_not_found)
                         binding.errorMessage.visibility = View.VISIBLE
@@ -180,32 +217,43 @@ class FlightTrackingActivity : AppCompatActivity() {
                         binding.mapErrorText.text = "No flight data available to display on map"
                     }
                 } else {
+                    // Handle API error responses (e.g., 404, 500)
                     Log.e(TAG, "API error: ${response.code()}, ${response.message()}")
                     binding.flightStatusText.text = getString(R.string.error_network)
                     binding.errorMessage.visibility = View.VISIBLE
                     binding.errorMessage.text = "API Error: ${response.code()} - Please check your network connection"
                 }
             } catch (e: Exception) {
+                // Handle network exceptions and other unforeseen errors
                 Log.e(TAG, "Network error", e)
                 binding.flightStatusText.text = getString(R.string.error_network)
                 binding.errorMessage.visibility = View.VISIBLE
                 binding.errorMessage.text = "Network Error: ${e.message ?: "Unknown error"}"
             } finally {
+                // Always hide the loading indicator when operation completes
                 showLoading(false)
             }
         }
     }
 
-    // NEW: Add a helper function to persist flight data
+    /**
+     * Stores the flight data in the local Room database.
+     * This allows the app to show flight history and maintain data when offline.
+     *
+     * @param flightData The flight data object received from the API
+     */
     private suspend fun storeFlightData(flightData: com.example.mc_assignment2.api.FlightData) {
         val flightDao = FlightDatabase.getDatabase(this).flightDao()
         val dateFormatFull = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
         val dateFormatShort = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         try {
+            // Parse dates from API format to Java Date objects
             val scheduledDeparture = flightData.departure.scheduled?.let { dateFormatFull.parse(it) } ?: Date()
             val actualDeparture = flightData.departure.actual?.let { dateFormatFull.parse(it) }
             val scheduledArrival = flightData.arrival.scheduled?.let { dateFormatFull.parse(it) } ?: Date()
             val actualArrival = flightData.arrival.actual?.let { dateFormatFull.parse(it) }
+
+            // Create a FlightEntity object to store in the database
             val flightEntity = FlightEntity(
                 flightnumber = flightData.flight.iata,
                 flightdate = flightData.flight_date?.let { dateFormatShort.parse(it) } ?: Date(),
@@ -222,6 +270,8 @@ class FlightTrackingActivity : AppCompatActivity() {
                     com.example.mc_assignment2.utils.FlightTimeCalculator.calculateDurationInMinutes(actualDeparture, actualArrival) else null,
                 flightstatus = flightData.flight_status ?: "unknown"
             )
+
+            // Insert the flight into the database
             flightDao.insertFlight(flightEntity)
             Log.d(TAG, "Stored flight in database: ${flightEntity.flightnumber}")
         } catch (e: Exception) {
@@ -229,6 +279,12 @@ class FlightTrackingActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Controls the visibility of the loading indicator.
+     * Also hides error messages when loading is in progress.
+     *
+     * @param isLoading Whether the loading indicator should be shown
+     */
     private fun showLoading(isLoading: Boolean) {
         if (isLoading) {
             binding.progressBar.visibility = View.VISIBLE
@@ -238,28 +294,34 @@ class FlightTrackingActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Updates all UI elements with the latest flight information.
+     * This includes status, times, duration, and delay information.
+     *
+     * @param flightData The flight data object containing all flight information
+     */
     private fun updateUI(flightData: FlightData) {
         binding.errorMessage.visibility = View.GONE
 
-        // Update flight status
+        // Update flight status (e.g., "scheduled", "active", "landed")
         binding.flightStatusText.text = flightData.flight_status ?: "Unknown"
 
-        // Format dates for display
+        // Format dates for display in a user-friendly format (HH:MM)
         val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 
-        // Update departure info
+        // Update departure airport code and scheduled time
         binding.departureAirportText.text = flightData.departure.iata
         binding.departureTimeText.text = flightData.departure.scheduled?.let {
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).parse(it)
         }?.let { dateFormat.format(it) } ?: "N/A"
 
-        // Update arrival info
+        // Update arrival airport code and scheduled time
         binding.arrivalAirportText.text = flightData.arrival.iata
         binding.arrivalTimeText.text = flightData.arrival.scheduled?.let {
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).parse(it)
         }?.let { dateFormat.format(it) } ?: "N/A"
 
-        // Calculate and display flight duration
+        // Calculate and display flight duration in hours and minutes
         val scheduledDeparture = flightData.departure.scheduled?.let {
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).parse(it)
         }
@@ -276,7 +338,7 @@ class FlightTrackingActivity : AppCompatActivity() {
             binding.flightDurationText.text = "N/A"
         }
 
-        // Display delay information
+        // Display delay information if available
         val delayText = when {
             flightData.departure.delay != null -> FlightTimeCalculator.formatDelay(flightData.departure.delay)
             flightData.arrival.delay != null -> FlightTimeCalculator.formatDelay(flightData.arrival.delay)
@@ -285,6 +347,13 @@ class FlightTrackingActivity : AppCompatActivity() {
         binding.delayText.text = delayText
     }
 
+    /**
+     * Updates the Google Map with flight route visualization.
+     * Shows departure and arrival airports, connects them with a line,
+     * and displays the current aircraft position if available.
+     *
+     * @param flightData The flight data object containing coordinates and status
+     */
     private fun updateMap(flightData: FlightData) {
         try {
             val googleMap = map ?: run {
@@ -294,11 +363,11 @@ class FlightTrackingActivity : AppCompatActivity() {
                 return
             }
 
-            // Clear previous markers
+            // Clear previous markers and routes
             googleMap.clear()
             binding.mapErrorText.visibility = View.GONE
 
-            // Log airport info for debugging
+            // Log airport info for debugging coordinate issues
             Log.d(TAG, "Departure airport_info: ${flightData.departure.airport_info}")
             Log.d(TAG, "Arrival airport_info: ${flightData.arrival.airport_info}")
 
@@ -308,11 +377,10 @@ class FlightTrackingActivity : AppCompatActivity() {
             val arrLat = flightData.arrival.airport_info?.latitude
             val arrLng = flightData.arrival.airport_info?.longitude
 
-            // Check if we have coordinates
+            // Fall back to hardcoded coordinates if API doesn't provide them
             if (depLat == null || depLng == null || arrLat == null || arrLng == null) {
                 Log.e(TAG, "Missing airport coordinates - using fallback coordinates")
-                // Use fallback coordinates based on common airport locations
-                // This is just a workaround - in a real app you'd have a database of airport coordinates
+                // This is a resilience measure in case the API doesn't provide coordinates
                 handleMissingCoordinates(flightData, googleMap)
                 return
             }
@@ -324,7 +392,7 @@ class FlightTrackingActivity : AppCompatActivity() {
             googleMap.addMarker(MarkerOptions().position(departurePosition).title(flightData.departure.iata))
             googleMap.addMarker(MarkerOptions().position(arrivalPosition).title(flightData.arrival.iata))
 
-            // Draw a line between departure and arrival
+            // Draw a line representing the flight route
             googleMap.addPolyline(
                 PolylineOptions()
                     .add(departurePosition, arrivalPosition)
@@ -332,11 +400,12 @@ class FlightTrackingActivity : AppCompatActivity() {
                     .color(ContextCompat.getColor(this, R.color.colorPrimary))
             )
 
-            // If the flight is in the air and we have live position, show it
+            // If the flight is in the air and we have live position, show the aircraft location
             val flightLat = flightData.live?.latitude
             val flightLng = flightData.live?.longitude
 
             if (flightLat != null && flightLng != null && flightData.flight_status == "active") {
+                // Create a marker for the current aircraft position
                 val flightPosition = LatLng(flightLat, flightLng)
                 googleMap.addMarker(
                     MarkerOptions()
@@ -348,30 +417,39 @@ class FlightTrackingActivity : AppCompatActivity() {
                 // Center the map on the current flight position
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(flightPosition, 5f))
             } else {
-                // If no live data, show the entire route
+                // If no live data, show the entire route by creating a boundary that includes both airports
                 try {
                     val bounds = com.google.android.gms.maps.model.LatLngBounds.Builder()
                         .include(departurePosition)
                         .include(arrivalPosition)
                         .build()
 
+                    // Add padding around the bounds for better visibility
                     googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 200))
                 } catch (e: Exception) {
                     Log.e(TAG, "Error setting map bounds", e)
-                    // Fallback: center between the two points
+                    // Fallback: center between the two points if boundary calculation fails
                     val midLat = (depLat + arrLat) / 2
                     val midLng = (depLng + arrLng) / 2
                     googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(midLat, midLng), 4f))
                 }
             }
         } catch (e: Exception) {
+            // Handle any unexpected errors during map update
             Log.e(TAG, "Error updating map", e)
             binding.mapErrorText.visibility = View.VISIBLE
             binding.mapErrorText.text = "Map error: ${e.message}"
         }
     }
 
-    // Fallback method when coordinates are missing
+    /**
+     * Fallback method for handling missing airport coordinates.
+     * Uses a hardcoded database of common airport locations when the API
+     * doesn't provide coordinate information for airports.
+     *
+     * @param flightData The flight data object with airport codes
+     * @param googleMap The Google Map instance to update
+     */
     private fun handleMissingCoordinates(flightData: FlightData, googleMap: GoogleMap) {
         val depCode = flightData.departure.iata
         val arrCode = flightData.arrival.iata
@@ -382,6 +460,7 @@ class FlightTrackingActivity : AppCompatActivity() {
         binding.mapErrorText.text = "Using approximate airport locations"
 
         // Create a map of common airport codes to coordinates
+        // This is a resilience feature when the API doesn't provide coordinates
         val airportCoordinates = mapOf(
             // North America
             "JFK" to LatLng(40.6413, -73.7781),
@@ -425,14 +504,14 @@ class FlightTrackingActivity : AppCompatActivity() {
             "AKL" to LatLng(-37.0082, 174.7850)  // Auckland
         )
 
-        // Try to get coordinates from our map
+        // Try to get coordinates from our map of common airports
         val depPos = airportCoordinates[depCode]
         val arrPos = airportCoordinates[arrCode]
 
         Log.d(TAG, "Departure airport $depCode coordinate found: ${depPos != null}")
         Log.d(TAG, "Arrival airport $arrCode coordinate found: ${arrPos != null}")
 
-        // If we couldn't find either airport, show world map
+        // If we couldn't find either airport, show world map with error message
         if (depPos == null && arrPos == null) {
             googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 1f))
             binding.mapErrorText.text = "Cannot display route map - unknown airport codes: $depCode and $arrCode"
@@ -457,6 +536,7 @@ class FlightTrackingActivity : AppCompatActivity() {
                     .color(ContextCompat.getColor(this, R.color.colorPrimary))
             )
 
+            // Try to fit both airports in the view
             try {
                 val bounds = com.google.android.gms.maps.model.LatLngBounds.Builder()
                     .include(depPos)
@@ -466,13 +546,13 @@ class FlightTrackingActivity : AppCompatActivity() {
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 200))
             } catch (e: Exception) {
                 Log.e(TAG, "Error setting fallback map bounds", e)
-                // Center between the two points
+                // Center between the two points as a fallback
                 val midLat = (depPos.latitude + arrPos.latitude) / 2
                 val midLng = (depPos.longitude + arrPos.longitude) / 2
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(midLat, midLng), 3f))
             }
         } else {
-            // Otherwise just show the one we have
+            // If we only have one airport, just show that one
             val pos = depPos ?: arrPos!!
             googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 5f))
             binding.mapErrorText.text = if (depPos == null) {

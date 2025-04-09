@@ -8,12 +8,18 @@ import android.util.Log
 private const val TAG = "FlightDataCollection"
 
 /**
- * Auto-start receiver to handle device reboots
+ * BroadcastReceiver that listens for device boot completion.
+ * Automatically restarts the [FlightDataCollectionService] after reboot,
+ * ensuring that background data collection continues without manual intervention.
  */
 class BootReceiver : BroadcastReceiver() {
+
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+            // Create an intent to start the background flight data collection service
             val serviceIntent = Intent(context, FlightDataCollectionService::class.java)
+
+            // Start the service (requires appropriate permissions in AndroidManifest)
             context.startService(serviceIntent)
             Log.d(TAG, "Starting service after device boot")
         }
