@@ -1,21 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#2196F3</color>
-    <color name="colorPrimaryDark">#1976D2</color>
-    <color name="colorAccent">#FF5722</color>
-    <color name="colorBackground">#FFFFFF</color>
-    <color name="colorText">#212121</color>
-    <color name="colorTextSecondary">#757575</color>
+    <!-- Theme colors - these must match the names expected by your theme -->
+    <color name="colorPrimary">#1976D2</color>
+    <color name="colorPrimaryDark">#0D47A1</color>
+    <color name="colorAccent">#FF6D00</color>
 
-    <!-- Flight status colors -->
-    <color name="statusActive">#4CAF50</color> <!-- Green for active/on-time flights -->
-    <color name="statusDelayed">#FFC107</color> <!-- Yellow for delayed flights -->
-    <color name="statusCancelled">#F44336</color> <!-- Red for cancelled flights -->
-    <color name="statusLanded">#3F51B5</color> <!-- Blue for completed flights -->
-
-    <!-- Map colors -->
-    <color name="flightPathColor">#2196F3</color> <!-- Blue for flight path -->
-    <color name="departureMarkerColor">#4CAF50</color> <!-- Green for departure -->
-    <color name="arrivalMarkerColor">#F44336</color> <!-- Red for arrival -->
-    <color name="currentPositionColor">#FF5722</color> <!-- Orange for current position -->
+    <!-- You can keep these additional colors as they are -->
+    <color name="primary_text_color">#212121</color>
+    <color name="secondary_text_color">#757575</color>
+    <color name="background_color">#F5F5F5</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="divider_color">#EEEEEE</color>
 </resources>
