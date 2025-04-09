@@ -15,6 +15,21 @@ Flight Tracker is a robust mobile application that allows users to:
 
 The application leverages the AviationStack API for retrieving flight information and stores data locally for offline access and statistical analysis.
 
+## APP Screenshort
+### App ScreenShot
+
+#### Main Homepage screen
+<img src=./images/flight_traker_homepage.png  alt="Main Screen" width="200"/>
+
+#### FLight Tracking Screen
+<img src=./images/flight_tracking_page.png  alt="flight Screen" width="200"/>
+
+#### After Database Storage after search
+<img src=./images/database_stored_after_search.png  alt="stored Screen" width="200"/>
+
+#### Error when flight not found
+<img src=./images/error_flight_not_found.png alt="Main Screen" width="200"/>
+
 ## Features
 
 ### Real-time Flight Tracking
