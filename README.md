@@ -96,7 +96,7 @@ The application follows a modern Android architecture with the following compone
 4. Build and run the application on your device or emulator
 
 ### API Key Configuration
-The application uses the AviationStack API for retrieving flight data. The API key is hardcoded in the `FlightApiService.kt` file, but in a production environment, it should be stored securely using BuildConfig variables or other secure storage methods.
+The application uses the AviationStack API for retrieving flight data. The API key is hardcoded in the `FlightApiService.kt` file.
 
 ```kotlin
 const val API_KEY = "1e55772bb9e23418e51a0ba91bd100f5" // Replace with your API key
