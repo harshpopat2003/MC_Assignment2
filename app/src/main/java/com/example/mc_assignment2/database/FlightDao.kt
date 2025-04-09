@@ -34,8 +34,11 @@ interface FlightDao {
     @Query("SELECT * FROM flights WHERE flightdate BETWEEN :startDate AND :endDate")
     suspend fun getFlightsBetweenDates(startDate: Date, endDate: Date): List<FlightEntity>
 
+    @Query("DELETE FROM flights")
+    suspend fun clearFlights()
+
     @Query("SELECT departureairport AS departureAirport, arrivalairport AS arrivalAirport, " +
-           "(AVG(actualduration) + AVG(departuredelay) + AVG(arrivaldelay)) AS averageDuration " +
+           "AVG(actualduration + departuredelay + arrivaldelay) AS averageDuration " +
            "FROM flights GROUP BY departureairport, arrivalairport")
     fun getRouteStatistics(): Flow<List<RouteStatisticsResult>>
 }

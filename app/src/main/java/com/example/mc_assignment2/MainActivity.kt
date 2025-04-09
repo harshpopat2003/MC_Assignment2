@@ -33,6 +33,11 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Clear flight database on app restart
+        lifecycleScope.launch {
+            FlightDatabase.getDatabase(this@MainActivity).flightDao().clearFlights()
+        }
+
         // Start the flight data collection service
         val serviceIntent = Intent(this, FlightDataCollectionService::class.java)
         startService(serviceIntent)
