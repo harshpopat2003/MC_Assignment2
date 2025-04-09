@@ -16,7 +16,11 @@ import com.example.mc_assignment2.service.FlightDataCollectionService
 import com.example.mc_assignment2.utils.FlightTimeCalculator
 import com.example.mc_assignment2.utils.ValidationUtils
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.Date
+import com.example.mc_assignment2.database.FlightDao
+import com.example.mc_assignment2.database.FlightEntity
 
 class MainActivity : AppCompatActivity() {
 
@@ -59,26 +63,10 @@ class MainActivity : AppCompatActivity() {
     private fun loadFlightStats() {
         val flightDao = FlightDatabase.getDatabase(this).flightDao()
         lifecycleScope.launch {
-            // Old implementation:
-            //flightDao.getAllRoutes().collectLatest { routeFlights ->
-            //    val routeStats = mutableListOf<RouteStatistics>()
-            //    for (flight in routeFlights) {
-            //        val avgTimeTaken = flightDao.getAverageTimeTakenWithDelays(
-            //            flight.departureairport,
-            //            flight.arrivalairport
-            //        ) ?: 0.0
-            //        routeStats.add(
-            //            RouteStatistics(
-            //                departureAirport = flight.departureairport,
-            //                arrivalAirport = flight.arrivalairport,
-            //                averageDuration = avgTimeTaken.toInt()
-            //            )
-            //        )
-            //    }
-            //    adapter.submitList(routeStats)
-            //}
-            
-            // New approach using aggregated data
+            // Check if no route statistics exist; if empty, insert fake data
+            if (flightDao.getRouteStatistics().first().isEmpty()) {
+                insertFakeFlightData(flightDao)
+            }
             flightDao.getRouteStatistics().collectLatest { routeStatsResult ->
                 val routeStats = routeStatsResult.map {
                     RouteStatistics(
@@ -89,6 +77,47 @@ class MainActivity : AppCompatActivity() {
                 }
                 adapter.submitList(routeStats)
             }
+        }
+    }
+
+    private suspend fun insertFakeFlightData(flightDao: FlightDao) {
+        val now = Date()
+        val oneHourMillis = 60 * 60 * 1000
+        val sampleFlights: List<FlightEntity> = listOf(
+            FlightEntity(
+                flightnumber = "FAKE001",
+                flightdate = now,
+                departureairport = "JFK",
+                arrivalairport = "LAX",
+                scheduleddeparture = now,
+                actualdeparture = Date(now.time + 15 * 60 * 1000), // +15 mins
+                scheduledarrival = Date(now.time + 6 * oneHourMillis),
+                actualarrival = Date(now.time + 6 * oneHourMillis + 10 * 60 * 1000),
+                departuredelay = 15,
+                arrivaldelay = 10,
+                scheduledduration = 6 * 60,
+                actualduration = 6 * 60 + 10,
+                flightstatus = "fake"
+            ),
+            FlightEntity(
+                flightnumber = "FAKE002",
+                flightdate = now,
+                departureairport = "ORD",
+                arrivalairport = "MIA",
+                scheduleddeparture = now,
+                actualdeparture = Date(now.time + 20 * 60 * 1000), // +20 mins
+                scheduledarrival = Date(now.time + 3 * oneHourMillis),
+                actualarrival = Date(now.time + 3 * oneHourMillis + 5 * 60 * 1000),
+                departuredelay = 20,
+                arrivaldelay = 5,
+                scheduledduration = 3 * 60,
+                actualduration = 3 * 60 + 5,
+                flightstatus = "fake"
+            )
+        )
+        // Explicitly specify the type of flight to remove ambiguity
+        sampleFlights.forEach { flight: FlightEntity ->
+            flightDao.insertFlight(flight)
         }
     }
 }

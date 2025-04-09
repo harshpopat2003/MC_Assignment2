@@ -29,6 +29,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import com.example.mc_assignment2.database.FlightDatabase
+import com.example.mc_assignment2.database.FlightEntity
 
 private const val TAG = "FlightTrackingActivity"
 
@@ -158,6 +160,9 @@ class FlightTrackingActivity : AppCompatActivity() {
                         Log.d(TAG, "Flight data received: ${flightData.flight.iata}")
                         currentFlightData = flightData
                         updateUI(flightData)
+                       
+                        // NEW: store flight details into database
+                        storeFlightData(flightData)
 
                         // Only update map if it's ready
                         if (mapReady) {
@@ -188,6 +193,39 @@ class FlightTrackingActivity : AppCompatActivity() {
             } finally {
                 showLoading(false)
             }
+        }
+    }
+
+    // NEW: Add a helper function to persist flight data
+    private suspend fun storeFlightData(flightData: com.example.mc_assignment2.api.FlightData) {
+        val flightDao = FlightDatabase.getDatabase(this).flightDao()
+        val dateFormatFull = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US)
+        val dateFormatShort = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        try {
+            val scheduledDeparture = flightData.departure.scheduled?.let { dateFormatFull.parse(it) } ?: Date()
+            val actualDeparture = flightData.departure.actual?.let { dateFormatFull.parse(it) }
+            val scheduledArrival = flightData.arrival.scheduled?.let { dateFormatFull.parse(it) } ?: Date()
+            val actualArrival = flightData.arrival.actual?.let { dateFormatFull.parse(it) }
+            val flightEntity = FlightEntity(
+                flightnumber = flightData.flight.iata,
+                flightdate = flightData.flight_date?.let { dateFormatShort.parse(it) } ?: Date(),
+                departureairport = flightData.departure.iata,
+                arrivalairport = flightData.arrival.iata,
+                scheduleddeparture = scheduledDeparture,
+                actualdeparture = actualDeparture,
+                scheduledarrival = scheduledArrival,
+                actualarrival = actualArrival,
+                departuredelay = flightData.departure.delay,
+                arrivaldelay = flightData.arrival.delay,
+                scheduledduration = com.example.mc_assignment2.utils.FlightTimeCalculator.calculateDurationInMinutes(scheduledDeparture, scheduledArrival),
+                actualduration = if (actualDeparture != null && actualArrival != null)
+                    com.example.mc_assignment2.utils.FlightTimeCalculator.calculateDurationInMinutes(actualDeparture, actualArrival) else null,
+                flightstatus = flightData.flight_status ?: "unknown"
+            )
+            flightDao.insertFlight(flightEntity)
+            Log.d(TAG, "Stored flight in database: ${flightEntity.flightnumber}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error storing flight data", e)
         }
     }
 
@@ -337,9 +375,9 @@ class FlightTrackingActivity : AppCompatActivity() {
     private fun handleMissingCoordinates(flightData: FlightData, googleMap: GoogleMap) {
         val depCode = flightData.departure.iata
         val arrCode = flightData.arrival.iata
-        
+
         Log.d(TAG, "Using fallback coordinates for flight: ${flightData.flight.iata} from $depCode to $arrCode")
-        
+
         binding.mapErrorText.visibility = View.VISIBLE
         binding.mapErrorText.text = "Using approximate airport locations"
 
@@ -356,7 +394,7 @@ class FlightTrackingActivity : AppCompatActivity() {
             "DEN" to LatLng(39.8561, -104.6737),
             "SEA" to LatLng(47.4502, -122.3088),
             "YYZ" to LatLng(43.6777, -79.6248),
-            
+
             // Europe
             "LHR" to LatLng(51.4700, -0.4543),
             "CDG" to LatLng(49.0097, 2.5479),
@@ -365,7 +403,7 @@ class FlightTrackingActivity : AppCompatActivity() {
             "MAD" to LatLng(40.4983, -3.5676),
             "FCO" to LatLng(41.8045, 12.2508),
             "ZRH" to LatLng(47.4582, 8.5555),
-            
+
             // Asia
             "DEL" to LatLng(28.5562, 77.1000),  // Delhi
             "BOM" to LatLng(19.0896, 72.8656),  // Mumbai
@@ -380,7 +418,7 @@ class FlightTrackingActivity : AppCompatActivity() {
             "HND" to LatLng(35.5494, 139.7798), // Tokyo Haneda
             "PEK" to LatLng(40.0799, 116.6031), // Beijing
             "PVG" to LatLng(31.1443, 121.8083), // Shanghai Pudong
-            
+
             // Australia/Pacific
             "SYD" to LatLng(-33.9399, 151.1753), // Sydney
             "MEL" to LatLng(-37.6690, 144.8410), // Melbourne
@@ -390,7 +428,7 @@ class FlightTrackingActivity : AppCompatActivity() {
         // Try to get coordinates from our map
         val depPos = airportCoordinates[depCode]
         val arrPos = airportCoordinates[arrCode]
-        
+
         Log.d(TAG, "Departure airport $depCode coordinate found: ${depPos != null}")
         Log.d(TAG, "Arrival airport $arrCode coordinate found: ${arrPos != null}")
 
