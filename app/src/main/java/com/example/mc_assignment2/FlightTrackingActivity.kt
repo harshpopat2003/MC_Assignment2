@@ -335,45 +335,83 @@ class FlightTrackingActivity : AppCompatActivity() {
 
     // Fallback method when coordinates are missing
     private fun handleMissingCoordinates(flightData: FlightData, googleMap: GoogleMap) {
+        val depCode = flightData.departure.iata
+        val arrCode = flightData.arrival.iata
+        
+        Log.d(TAG, "Using fallback coordinates for flight: ${flightData.flight.iata} from $depCode to $arrCode")
+        
         binding.mapErrorText.visibility = View.VISIBLE
         binding.mapErrorText.text = "Using approximate airport locations"
 
         // Create a map of common airport codes to coordinates
         val airportCoordinates = mapOf(
+            // North America
             "JFK" to LatLng(40.6413, -73.7781),
             "LAX" to LatLng(33.9416, -118.4085),
-            "LHR" to LatLng(51.4700, -0.4543),
-            "CDG" to LatLng(49.0097, 2.5479),
-            "DXB" to LatLng(25.2528, 55.3644),
             "SFO" to LatLng(37.6213, -122.3790),
             "ATL" to LatLng(33.6407, -84.4277),
             "ORD" to LatLng(41.9742, -87.9073),
-            "DEL" to LatLng(28.7041, 77.1025),
-            // Add more as needed
+            "MIA" to LatLng(25.7932, -80.2906),
+            "DFW" to LatLng(32.8998, -97.0403),
+            "DEN" to LatLng(39.8561, -104.6737),
+            "SEA" to LatLng(47.4502, -122.3088),
+            "YYZ" to LatLng(43.6777, -79.6248),
+            
+            // Europe
+            "LHR" to LatLng(51.4700, -0.4543),
+            "CDG" to LatLng(49.0097, 2.5479),
+            "FRA" to LatLng(50.0379, 8.5622),
+            "AMS" to LatLng(52.3105, 4.7683),
+            "MAD" to LatLng(40.4983, -3.5676),
+            "FCO" to LatLng(41.8045, 12.2508),
+            "ZRH" to LatLng(47.4582, 8.5555),
+            
+            // Asia
+            "DEL" to LatLng(28.5562, 77.1000),  // Delhi
+            "BOM" to LatLng(19.0896, 72.8656),  // Mumbai
+            "MAA" to LatLng(12.9941, 80.1709),  // Chennai
+            "CCU" to LatLng(22.6520, 88.4463),  // Kolkata
+            "BLR" to LatLng(13.1986, 77.7066),  // Bangalore
+            "HYD" to LatLng(17.2403, 78.4294),  // Hyderabad
+            "DXB" to LatLng(25.2528, 55.3644),  // Dubai
+            "SIN" to LatLng(1.3644, 103.9915),  // Singapore
+            "HKG" to LatLng(22.3080, 113.9185), // Hong Kong
+            "NRT" to LatLng(35.7647, 140.3864), // Tokyo Narita
+            "HND" to LatLng(35.5494, 139.7798), // Tokyo Haneda
+            "PEK" to LatLng(40.0799, 116.6031), // Beijing
+            "PVG" to LatLng(31.1443, 121.8083), // Shanghai Pudong
+            
+            // Australia/Pacific
+            "SYD" to LatLng(-33.9399, 151.1753), // Sydney
+            "MEL" to LatLng(-37.6690, 144.8410), // Melbourne
+            "AKL" to LatLng(-37.0082, 174.7850)  // Auckland
         )
 
         // Try to get coordinates from our map
-        val depPos = airportCoordinates[flightData.departure.iata] ?: LatLng(0.0, 0.0)
-        val arrPos = airportCoordinates[flightData.arrival.iata] ?: LatLng(0.0, 0.0)
+        val depPos = airportCoordinates[depCode]
+        val arrPos = airportCoordinates[arrCode]
+        
+        Log.d(TAG, "Departure airport $depCode coordinate found: ${depPos != null}")
+        Log.d(TAG, "Arrival airport $arrCode coordinate found: ${arrPos != null}")
 
         // If we couldn't find either airport, show world map
-        if (depPos == LatLng(0.0, 0.0) && arrPos == LatLng(0.0, 0.0)) {
+        if (depPos == null && arrPos == null) {
             googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 1f))
-            binding.mapErrorText.text = "Cannot display route map - missing airport coordinates"
+            binding.mapErrorText.text = "Cannot display route map - unknown airport codes: $depCode and $arrCode"
             return
         }
 
         // Add markers for airports we found
-        if (depPos != LatLng(0.0, 0.0)) {
+        if (depPos != null) {
             googleMap.addMarker(MarkerOptions().position(depPos).title(flightData.departure.iata))
         }
 
-        if (arrPos != LatLng(0.0, 0.0)) {
+        if (arrPos != null) {
             googleMap.addMarker(MarkerOptions().position(arrPos).title(flightData.arrival.iata))
         }
 
         // If we have both airports, draw a line and zoom to fit
-        if (depPos != LatLng(0.0, 0.0) && arrPos != LatLng(0.0, 0.0)) {
+        if (depPos != null && arrPos != null) {
             googleMap.addPolyline(
                 PolylineOptions()
                     .add(depPos, arrPos)
@@ -397,8 +435,13 @@ class FlightTrackingActivity : AppCompatActivity() {
             }
         } else {
             // Otherwise just show the one we have
-            val pos = if (depPos != LatLng(0.0, 0.0)) depPos else arrPos
+            val pos = depPos ?: arrPos!!
             googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 5f))
+            binding.mapErrorText.text = if (depPos == null) {
+                "Unknown departure airport: $depCode"
+            } else {
+                "Unknown arrival airport: $arrCode"
+            }
         }
     }
 }

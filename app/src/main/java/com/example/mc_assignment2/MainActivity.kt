@@ -52,32 +52,41 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Load flight statistics
+        // Load flight statistics using new query
         loadFlightStats()
     }
 
     private fun loadFlightStats() {
         val flightDao = FlightDatabase.getDatabase(this).flightDao()
-
         lifecycleScope.launch {
-            flightDao.getAllRoutes().collectLatest { routeFlights ->
-                val routeStats = mutableListOf<RouteStatistics>()
-
-                for (flight in routeFlights) {
-                    val avgDuration = flightDao.getAverageFlightDuration(
-                        flight.departureairport,
-                        flight.arrivalairport
-                    )
-
-                    routeStats.add(
-                        RouteStatistics(
-                            departureAirport = flight.departureairport,
-                            arrivalAirport = flight.arrivalairport,
-                            averageDuration = avgDuration.toInt()
-                        )
+            // Old implementation:
+            //flightDao.getAllRoutes().collectLatest { routeFlights ->
+            //    val routeStats = mutableListOf<RouteStatistics>()
+            //    for (flight in routeFlights) {
+            //        val avgTimeTaken = flightDao.getAverageTimeTakenWithDelays(
+            //            flight.departureairport,
+            //            flight.arrivalairport
+            //        ) ?: 0.0
+            //        routeStats.add(
+            //            RouteStatistics(
+            //                departureAirport = flight.departureairport,
+            //                arrivalAirport = flight.arrivalairport,
+            //                averageDuration = avgTimeTaken.toInt()
+            //            )
+            //        )
+            //    }
+            //    adapter.submitList(routeStats)
+            //}
+            
+            // New approach using aggregated data
+            flightDao.getRouteStatistics().collectLatest { routeStatsResult ->
+                val routeStats = routeStatsResult.map {
+                    RouteStatistics(
+                        departureAirport = it.departureAirport,
+                        arrivalAirport = it.arrivalAirport,
+                        averageDuration = it.averageDuration.toInt()
                     )
                 }
-
                 adapter.submitList(routeStats)
             }
         }

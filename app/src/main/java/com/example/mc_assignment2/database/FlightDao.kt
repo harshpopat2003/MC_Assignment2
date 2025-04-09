@@ -25,9 +25,23 @@ interface FlightDao {
     @Query("SELECT AVG(actualduration) FROM flights WHERE departureairport = :departureAirport AND arrivalairport = :arrivalAirport AND actualduration > 0")
     suspend fun getAverageFlightDuration(departureAirport: String, arrivalAirport: String): Double
 
+    @Query("SELECT AVG(actualduration) + AVG(departuredelay) + AVG(arrivaldelay) FROM flights WHERE departureairport = :departureAirport AND arrivalairport = :arrivalAirport")
+    suspend fun getAverageTimeTakenWithDelays(departureAirport: String, arrivalAirport: String): Double?
+
     @Query("SELECT * FROM flights GROUP BY departureairport, arrivalairport")
     fun getAllRoutes(): Flow<List<FlightEntity>>
 
     @Query("SELECT * FROM flights WHERE flightdate BETWEEN :startDate AND :endDate")
     suspend fun getFlightsBetweenDates(startDate: Date, endDate: Date): List<FlightEntity>
+
+    @Query("SELECT departureairport AS departureAirport, arrivalairport AS arrivalAirport, " +
+           "(AVG(actualduration) + AVG(departuredelay) + AVG(arrivaldelay)) AS averageDuration " +
+           "FROM flights GROUP BY departureairport, arrivalairport")
+    fun getRouteStatistics(): Flow<List<RouteStatisticsResult>>
 }
+
+data class RouteStatisticsResult(
+    val departureAirport: String,
+    val arrivalAirport: String,
+    val averageDuration: Double
+)

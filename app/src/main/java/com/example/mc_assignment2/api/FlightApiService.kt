@@ -7,7 +7,7 @@ import retrofit2.http.Query
 interface FlightApiService {
     companion object {
         const val BASE_URL = "https://api.aviationstack.com/v1/"
-        const val API_KEY = "61d7bc251a4e84a1112122513ca898a0" // In a real app, use BuildConfig or secure storage
+        const val API_KEY = "05002fe4c4848c239cea5d96748bf5ba" // In a real app, use BuildConfig or secure storage
     }
 
     @GET("flights")
